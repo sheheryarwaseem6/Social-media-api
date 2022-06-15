@@ -166,7 +166,69 @@ const login = async (req , res )=>{
         })
     }
 }
-
+const socialLogin = async (req, res) => {
+    try {
+        const alreadyUserAsSocialToke = await User.findOne({ user_social_token: req.body.user_social_token })
+        if (alreadyUserAsSocialToke) {
+            if (alreadyUserAsSocialToke.user_type !== req.body.user_type) {
+                return res.status(400).send({ status: 0, message: "Invalid User Type!" });
+            }
+        }
+        if (!req.body.user_social_token) {
+            return res.status(400).send({ status: 0, message: 'User Social Token field is required' });
+        }
+        else if (!req.body.user_social_type) {
+            return res.status(400).send({ status: 0, message: 'User Social Type field is required' });
+        }
+        else if (!req.body.user_device_type) {
+            return res.status(400).send({ status: 0, message: 'User Device Type field is required' });
+        }
+        else if (!req.body.user_device_token) {
+            return res.status(400).send({ status: 0, message: 'User Device Token field is required' });
+        }
+        else {
+            const checkUser = await User.findOne({ user_social_token: req.body.user_social_token });
+            if (!checkUser) {
+                const newRecord = new User();
+                // if(req.file){
+                //     newRecord.user_image    = req.file.path
+                //  }
+                // const customer = await stripe.customers.create({
+                //     description: 'New Customer Created',
+                // });
+                // newRecord.stripe_id = customer.id;
+                // newRecord.user_image = req.body.user_image ? req.body.user_image : ""
+                // newRecord.user_image = req.body.user_image
+                // newRecord.user_image = req.file ? req.file.path : req.body.user_image,
+                    newRecord.user_social_token = req.body.user_social_token,///
+                    newRecord.user_social_type = req.body.user_social_type,
+                    newRecord.user_device_type = req.body.user_device_type,
+                    newRecord.user_device_token = req.body.user_device_token
+                // newRecord.user_name = req.body.user_name,////
+                    newRecord.email = req.body.email,
+                    //newRecord.user_type = req.body.user_type,
+                    newRecord.verified = 1
+                await newRecord.generateAuthToken();
+                const saveLogin = await newRecord.save();
+                return res.status(200).send({ status: 1, message: 'Login Successfully', data: saveLogin });
+            } else {
+                const token = await checkUser.generateAuthToken();
+                const upatedRecord = await User.findOneAndUpdate({ _id: checkUser._id },
+                    { user_device_type: req.body.user_device_type, user_device_token: req.body.user_device_token, verified: 1 }
+                    , { new: true });
+                return res.status(200).send({ status: 1, message: 'Login Successfully', token: token,      data: upatedRecord });
+            }
+        }
+        // console.log("here 3 ")
+    }
+    catch (error) {
+        console.log('error *** ', error);
+        res.status(500).json({
+            status: 0,
+            message: error.message
+        });
+    }
+}
 
 //follow and unfollow 
 
@@ -596,4 +658,4 @@ const updatePassword = async (req, res) => {
 
 
 
-module.exports = {register, login , updatePassword , followUser, updateProfile , deleteProfile , myProfile , getUser, getAllUsers , forgotPassword , verifyUser , resendCode}
+module.exports = {register, login , socialLogin , updatePassword , followUser, updateProfile , deleteProfile , myProfile , getUser, getAllUsers , forgotPassword , verifyUser , resendCode}
